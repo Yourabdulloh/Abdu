@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Avtomobil O'yini</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #2c3e50; /* Dark blue-grey background */
+            font-family: 'Inter', sans-serif;
+            color: #ecf0f1; /* Light text color */
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        @font-face {
+            font-family: 'Inter';
+            src: url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        }
+
+        h1 {
+            color: #f1c40f; /* Yellow title */
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%; /* Full width for responsiveness */
+            max-width: 600px; /* Max width for desktop */
+            height: 70vh; /* Responsive height */
+            max-height: 800px;
+            border: 5px solid #f1c40f; /* Yellow border */
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #34495e; /* Darker blue-grey for road */
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .score-display {
+            margin-top: 15px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ecf0f1;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        #steeringWheelContainer {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: #7f8c8d; /* Grey background for wheel area */
+            border: 5px solid #bdc3c7; /* Light grey border */
+            cursor: grab;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            touch-action: none; /* Prevent default touch actions */
+        }
+
+        #steeringWheel {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background-color: #34495e; /* Darker grey for wheel */
+            border: 3px solid #2c3e50;
+            position: absolute;
+            transform: rotate(0deg);
+            transition: transform 0.05s ease-out; /* Smooth rotation */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #steeringWheel::before {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 50px;
+            background-color: #ecf0f1; /* Spoke */
+            transform: translateY(-25px);
+            border-radius: 5px;
+        }
+
+        #steeringWheel::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 50px;
+            background-color: #ecf0f1; /* Spoke */
+            transform: translateY(25px) rotate(180deg);
+            border-radius: 5px;
+        }
+
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            color: white;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .game-over-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .game-over-overlay h2 {
+            font-size: 3em;
+            color: #e74c3c; /* Red for game over */
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        }
+
+        .game-over-overlay p {
+            font-size: 1.8em;
+            margin-bottom: 30px;
+        }
+
+        .restart-button {
+            background-color: #3498db; /* Blue button */
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.5em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .restart-button:hover {
+            background-color: #2980b9; /* Darker blue on hover */
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .restart-button:active {
+            background-color: #3498db;
+            transform: translateY(0);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            #gameContainer {
+                height: 60vh;
+            }
+            .score-display {
+                font-size: 1.2em;
+            }
+            #steeringWheelContainer {
+                width: 120px;
+                height: 120px;
+            }
+            #steeringWheel {
+                width: 90px;
+                height: 90px;
+            }
+            .game-over-overlay h2 {
+                font-size: 2.5em;
+            }
+            .game-over-overlay p {
+                font-size: 1.5em;
+            }
+            .restart-button {
+                padding: 12px 25px;
+                font-size: 1.2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>3D Avtomobil O'yini</h1>
+    <div id="gameContainer">
+        <!-- Three.js canvas will be appended here -->
+    </div>
+    <div class="score-display">Ball: <span id="score">0</span></div>
+    <div class="controls">
+        <div id="steeringWheelContainer">
+            <div id="steeringWheel"></div>
+        </div>
+    </div>
+
+    <div id="gameOverOverlay" class="game-over-overlay">
+        <h2>O'yin Tugadi!</h2>
+        <p>Sizning ballingiz: <span id="finalScore">0</span></p>
+        <button id="restartButton" class="restart-button">Qayta O'ynash</button>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Global variables for Three.js scene
+        let scene, camera, renderer;
+        let car, road, sun;
+        let obstacles = [];
+        let roadLines = []; // Array to hold road line meshes
+        let score = 0;
+        let gameSpeed = 0.15; // Speed of the road and obstacles moving towards the camera
+        let carSpeed = 0.05; // Horizontal movement speed of the car
+        let animationFrameId;
+        let gameOver = false;
+
+        // DOM elements
+        const gameContainer = document.getElementById('gameContainer');
+        const scoreDisplay = document.getElementById('score');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const gameOverOverlay = document.getElementById('gameOverOverlay');
+        const restartButton = document.getElementById('restartButton');
+        const steeringWheelContainer = document.getElementById('steeringWheelContainer');
+        const steeringWheel = document.getElementById('steeringWheel');
+
+        // Steering wheel variables
+        let isDragging = false;
+        let startAngle = 0;
+        let currentWheelAngle = 0; // In degrees
+        const maxSteeringAngle = 45; // Max rotation for the visual wheel
+
+        // Function to initialize the Three.js scene
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // Sky blue background
+
+            // Camera
+            // PerspectiveCamera( fov, aspect, near, far )
+            camera = new THREE.PerspectiveCamera(75, gameContainer.clientWidth / gameContainer.clientHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10); // Position camera above and behind the car
+            camera.lookAt(0, 0, 0); // Look at the center of the scene
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(gameContainer.clientWidth, gameContainer.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            gameContainer.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // White directional light
+            directionalLight.position.set(0, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Sun (for visual effect, not actual light source)
+            const sunGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffd700 }); // Gold color
+            sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            sun.position.set(15, 20, -50); // Position high and far
+            scene.add(sun);
+
+            // Road
+            const roadGeometry = new THREE.PlaneGeometry(10, 200, 1, 10); // Width, Length
+            const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x7f8c8d }); // Grey road
+            road = new THREE.Mesh(roadGeometry, roadMaterial);
+            road.rotation.x = -Math.PI / 2; // Rotate to lie flat on the XZ plane
+            road.position.y = 0; // Ground level
+            road.position.z = -roadGeometry.parameters.height / 2 + camera.position.z; // Start road in front of camera
+            scene.add(road);
+
+            // Road lines (using simple planes for now)
+            const lineMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff }); // White lines
+            const centerLineGeometry = new THREE.PlaneGeometry(0.2, 2); // Thin, short line
+            for (let i = 0; i < 100; i++) { // Many lines to simulate continuous road
+                const line = new THREE.Mesh(centerLineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.y = 0.01; // Slightly above road to prevent Z-fighting
+                line.position.z = -i * 3; // Space them out
+                scene.add(line);
+                roadLines.push(line);
+            }
+
+            // Car Model (more detailed)
+            const carColor = 0xe74c3c; // Red car
+            const windowColor = 0xbdc3c7; // Grey window
+            const wheelColor = 0x34495e; // Dark grey wheels
+
+            const carGroup = new THREE.Group();
+
+            // Main Body
+            const bodyGeometry = new THREE.BoxGeometry(1.5, 0.8, 3); // Width, Height, Depth
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: carColor });
+            const carBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            carBody.position.set(0, 0.4, 0); // Position relative to group center
+            carGroup.add(carBody);
+
+            // Cabin/Roof
+            const cabinGeometry = new THREE.BoxGeometry(1.2, 0.6, 1.5);
+            const cabinMaterial = new THREE.MeshLambertMaterial({ color: carColor });
+            const carCabin = new THREE.Mesh(cabinGeometry, cabinMaterial);
+            carCabin.position.set(0, 1.1, 0.2); // On top of body, slightly forward
+            carGroup.add(carCabin);
+
+            // Front Window
+            const frontWindowGeometry = new THREE.PlaneGeometry(1.1, 0.5);
+            const frontWindowMaterial = new THREE.MeshLambertMaterial({ color: windowColor, transparent: true, opacity: 0.7 });
+            const frontWindow = new THREE.Mesh(frontWindowGeometry, frontWindowMaterial);
+            frontWindow.rotation.x = -Math.PI / 4; // Slanted
+            frontWindow.position.set(0, 1.3, 1); // Position on cabin front
+            carGroup.add(frontWindow);
+
+            // Rear Window
+            const rearWindowGeometry = new THREE.PlaneGeometry(1.1, 0.4);
+            const rearWindowMaterial = new THREE.MeshLambertMaterial({ color: windowColor, transparent: true, opacity: 0.7 });
+            const rearWindow = new THREE.Mesh(rearWindowGeometry, rearWindowMaterial);
+            rearWindow.rotation.x = Math.PI / 4; // Slanted
+            rearWindow.position.set(0, 1.1, -0.6); // Position on cabin rear
+            carGroup.add(rearWindow);
+
+            // Wheels
+            const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.5, 16);
+            const wheelMaterial = new THREE.MeshLambertMaterial({ color: wheelColor });
+
+            const frontLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontLeftWheel.rotation.x = Math.PI / 2; // Rotate to be flat
+            frontLeftWheel.position.set(-0.9, 0.2, 1.2); // Relative to car group
+            carGroup.add(frontLeftWheel);
+
+            const frontRightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontRightWheel.rotation.x = Math.PI / 2;
+            frontRightWheel.position.set(0.9, 0.2, 1.2);
+            carGroup.add(frontRightWheel);
+
+            const backLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            backLeftWheel.rotation.x = Math.PI / 2;
+            backLeftWheel.position.set(-0.9, 0.2, -1.2);
+            carGroup.add(backLeftWheel);
+
+            const backRightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            backRightWheel.rotation.x = Math.PI / 2;
+            backRightWheel.position.set(0.9, 0.2, -1.2);
+            carGroup.add(backRightWheel);
+
+            // Set the car group's initial position in the scene
+            carGroup.position.set(0, 0, 5); // Position the entire car group
+            scene.add(carGroup);
+            car = carGroup; // Now `car` refers to the entire car group
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            camera.aspect = gameContainer.clientWidth / gameContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(gameContainer.clientWidth, gameContainer.clientHeight);
+        }
+
+        // Create obstacle
+        function createObstacle() {
+            const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2); // Width, Height, Depth
+            const obstacleMaterial = new THREE.MeshLambertMaterial({ color: 0xf39c12 }); // Orange obstacle
+            const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+
+            // Random X position within road bounds
+            const minX = -4; // Road width is 10, so -5 to 5. Car width is 1.5. Leave some margin.
+            const maxX = 4;
+            obstacle.position.x = Math.random() * (maxX - minX) + minX;
+            obstacle.position.y = 1; // Slightly above road
+            obstacle.position.z = -100; // Start far away from camera
+
+            scene.add(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        // Game loop
+        function animate() {
+            if (gameOver) {
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+
+            // Move road lines
+            roadLines.forEach(line => {
+                line.position.z += gameSpeed * 5; // Move lines faster than obstacles
+                if (line.position.z > camera.position.z + 10) { // If line passes camera
+                    line.position.z = -90; // Reset far back
+                }
+            });
+
+            // Move obstacles
+            obstacles.forEach((obstacle, index) => {
+                obstacle.position.z += gameSpeed;
+
+                // Check for collision with car
+                // Create bounding boxes for collision detection
+                const carBox = new THREE.Box3().setFromObject(car);
+                const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+
+                if (carBox.intersectsBox(obstacleBox)) {
+                    gameOver = true;
+                    showGameOverScreen();
+                    return; // Exit loop if collision detected
+                }
+
+                // Remove obstacle if it goes off screen and increase score
+                if (obstacle.position.z > camera.position.z + 5) {
+                    scene.remove(obstacle);
+                    obstacles.splice(index, 1);
+                    score += 10;
+                    scoreDisplay.textContent = score;
+                }
+            });
+
+            // Add new obstacles periodically
+            if (Math.random() < 0.01 && obstacles.length < 5) { // Adjust probability and max obstacles
+                createObstacle();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Steering Wheel Control Logic
+        steeringWheelContainer.addEventListener('mousedown', onSteeringStart);
+        steeringWheelContainer.addEventListener('touchstart', onSteeringStart, { passive: false }); // Prevent scrolling
+
+        function onSteeringStart(event) {
+            isDragging = true;
+            steeringWheelContainer.style.cursor = 'grabbing';
+            const clientX = event.clientX || event.touches[0].clientX;
+            const clientY = event.clientY || event.touches[0].clientY;
+            const rect = steeringWheelContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            startAngle = Math.atan2(clientY - centerY, clientX - centerX);
+
+            window.addEventListener('mousemove', onSteeringMove);
+            window.addEventListener('touchmove', onSteeringMove, { passive: false }); // Prevent scrolling
+            window.addEventListener('mouseup', onSteeringEnd);
+            window.addEventListener('touchend', onSteeringEnd);
+            window.addEventListener('touchcancel', onSteeringEnd);
+        }
+
+        function onSteeringMove(event) {
+            if (!isDragging || gameOver) return;
+
+            event.preventDefault(); // Prevent default touch actions (like scrolling)
+            const clientX = event.clientX || event.touches[0].clientX;
+            const clientY = event.clientY || event.touches[0].clientY;
+            const rect = steeringWheelContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            const newAngle = Math.atan2(clientY - centerY, clientX - centerX);
+            let deltaAngle = newAngle - startAngle;
+
+            // Normalize angle to be between -PI and PI
+            if (deltaAngle > Math.PI) deltaAngle -= 2 * Math.PI;
+            if (deltaAngle < -Math.PI) deltaAngle += 2 * Math.PI;
+
+            // Convert radians to degrees for wheel visual rotation
+            let newWheelAngle = currentWheelAngle + (deltaAngle * 180 / Math.PI);
+
+            // Limit wheel rotation for visual feedback
+            newWheelAngle = Math.max(-maxSteeringAngle, Math.min(maxSteeringAngle, newWheelAngle));
+            steeringWheel.style.transform = `rotate(${newWheelAngle}deg)`;
+
+            // Map wheel angle to car's horizontal movement
+            // Normalize angle to -1 to 1 range for car movement sensitivity
+            const normalizedAngle = newWheelAngle / maxSteeringAngle;
+            car.position.x -= normalizedAngle * carSpeed; // Invert for more intuitive steering (left turn = car moves left)
+
+            // Keep car within road bounds
+            const roadHalfWidth = 4.2; // Half width of the road plane (10 units wide, so 5 units from center) minus some margin
+            if (car.position.x < -roadHalfWidth) car.position.x = -roadHalfWidth;
+            if (car.position.x > roadHalfWidth) car.position.x = roadHalfWidth;
+
+            startAngle = newAngle; // Update start angle for continuous dragging
+            currentWheelAngle = newWheelAngle;
+        }
+
+        function onSteeringEnd() {
+            isDragging = false;
+            steeringWheelContainer.style.cursor = 'grab';
+            // Smoothly return wheel to center
+            steeringWheel.style.transition = 'transform 0.3s ease-out';
+            steeringWheel.style.transform = 'rotate(0deg)';
+            currentWheelAngle = 0; // Reset internal angle
+
+            window.removeEventListener('mousemove', onSteeringMove);
+            window.removeEventListener('touchmove', onSteeringMove);
+            window.removeEventListener('mouseup', onSteeringEnd);
+            window.removeEventListener('touchend', onSteeringEnd);
+            window.removeEventListener('touchcancel', onSteeringEnd);
+        }
+
+        // Game Over Screen
+        function showGameOverScreen() {
+            finalScoreDisplay.textContent = score;
+            gameOverOverlay.classList.add('visible');
+        }
+
+        function hideGameOverScreen() {
+            gameOverOverlay.classList.remove('visible');
+        }
+
+        // Restart Game
+        restartButton.addEventListener('click', startGame);
+
+        function startGame() {
+            hideGameOverScreen();
+            score = 0;
+            scoreDisplay.textContent = score;
+
+            // Reset car position
+            car.position.set(0, 0, 5); // Car group is now positioned at (0,0,5) and its parts are relative to it.
+
+            // Clear existing obstacles from scene and array
+            obstacles.forEach(obstacle => scene.remove(obstacle));
+            obstacles = [];
+
+            gameOver = false;
+            // Reset steering wheel visual
+            steeringWheel.style.transition = 'none'; // Disable transition for immediate reset
+            steeringWheel.style.transform = 'rotate(0deg)';
+            currentWheelAngle = 0;
+            setTimeout(() => {
+                steeringWheel.style.transition = 'transform 0.05s ease-out'; // Re-enable transition
+            }, 10); // Small delay to allow style change to apply
+
+            animate(); // Start the game loop
+        }
+
+        // Start the game when the window loads
+        window.onload = function() {
+            init();
+            startGame(); // Call startGame to initialize and start the game loop
+        };
+
+    </script>
+</body>
+</html>
+
